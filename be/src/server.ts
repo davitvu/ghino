@@ -58,6 +58,10 @@ app.post("/customers", (req, res) => {
   res.status(201).json({ message: "Thành công", data: newCustomer });
 });
 
+app.get("/customers", (req, res) => {
+  res.status(200).json({ data: customers });
+});
+
 app.listen(PORT, () => {
   console.log("server running on Port:", PORT);
 });
