@@ -1,6 +1,7 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
-import { customers, type Customer } from "./customer.ts";
+import type { Customer } from "./customer.ts";
+import { pool } from "./db.ts";
 
 const app = express();
 const PORT = 4000;
@@ -11,7 +12,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/customers", (req, res) => {
+app.post("/customers", async (req, res) => {
   const body: unknown = req.body;
 
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -53,24 +54,40 @@ app.post("/customers", (req, res) => {
     phone: phone,
   };
 
-  customers.push(newCustomer);
+  await pool.query(
+    "INSERT INTO customers (id, name, phone) VALUES ($1, $2, $3)",
+    [newCustomer.id, newCustomer.name, newCustomer.phone],
+  );
 
   res.status(201).json({ message: "Thành công", data: newCustomer });
 });
 
-app.get("/customers", (req, res) => {
-  res.status(200).json({ data: customers });
+app.get("/customers", async (req, res) => {
+  const result = await pool.query("SELECT id, name, phone FROM customers");
+
+  res.status(200).json({ data: result.rows });
 });
 
-app.get("/customers/:id", (req, res) => {
-  const customer = customers.find((item) => item.id === req.params.id);
+app.get("/customers/:id", async (req, res) => {
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  if (!customer) {
+  if (!uuidPattern.test(req.params.id)) {
+    res.status(400).json({ message: "ID khách hàng không hợp lệ" });
+    return;
+  }
+
+  const result = await pool.query(
+    "SELECT id, name, phone FROM customers WHERE id=$1",
+    [req.params.id],
+  );
+
+  if (result.rowCount === 0) {
     res.status(404).json({ message: "Không tìm thấy khách hàng!" });
     return;
   }
 
-  res.status(200).json({ data: customer });
+  res.status(200).json({ data: result.rows[0] });
 });
 
 app.listen(PORT, () => {

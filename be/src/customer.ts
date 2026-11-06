@@ -3,5 +3,3 @@ export type Customer = {
   name: string;
   phone: string | null;
 };
-
-export const customers: Customer[] = [];
