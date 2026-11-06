@@ -62,6 +62,17 @@ app.get("/customers", (req, res) => {
   res.status(200).json({ data: customers });
 });
 
+app.get("/customers/:id", (req, res) => {
+  const customer = customers.find((item) => item.id === req.params.id);
+
+  if (!customer) {
+    res.status(404).json({ message: "Không tìm thấy khách hàng!" });
+    return;
+  }
+
+  res.status(200).json({ data: customer });
+});
+
 app.listen(PORT, () => {
   console.log("server running on Port:", PORT);
 });
