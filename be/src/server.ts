@@ -90,6 +90,54 @@ app.get("/customers/:id", async (req, res) => {
   res.status(200).json({ data: result.rows[0] });
 });
 
+app.post("/customers/:id/transactions", async (req, res) => {
+  const customerId = req.params.id;
+  const body: unknown = req.body;
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(customerId)) {
+    res.status(400).json({ message: "ID khách hàng không hợp lệ" });
+    return;
+  }
+
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    res.status(400).json({ message: "Dữ liệu không hợp lệ" });
+    return;
+  }
+
+  if (!("type" in body) || (body.type !== "payment" && body.type !== "debt")) {
+    res.status(400).json({ message: "Loại giao dịch không hợp lệ" });
+    return;
+  }
+
+  if (
+    !("amount" in body) ||
+    typeof body.amount !== "number" ||
+    !Number.isSafeInteger(body.amount) ||
+    body.amount <= 0
+  ) {
+    res.status(400).json({ message: "Số tiền phải là số nguyên dương" });
+    return;
+  }
+
+  const result = await pool.query("SELECT id FROM customers WHERE id = $1", [
+    customerId,
+  ]);
+  if (result.rowCount === 0) {
+    res.status(404).json({ message: "Không tìm thấy khách hàng" });
+    return;
+  }
+
+  const inserted = await pool.query(
+    "INSERT INTO transactions (id, customer_id, type, amount) VALUES ($1, $2, $3, $4) RETURNING id, customer_id, type, amount",
+    [randomUUID(), customerId, body.type, body.amount],
+  );
+
+  res.status(201).json({ data: inserted.rows[0] });
+});
+
 app.listen(PORT, () => {
   console.log("server running on Port:", PORT);
 });
