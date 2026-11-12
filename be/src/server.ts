@@ -69,17 +69,19 @@ app.get("/customers", async (req, res) => {
 });
 
 app.get("/customers/:id", async (req, res) => {
+  const customerId = req.params.id;
+
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  if (!uuidPattern.test(req.params.id)) {
+  if (!uuidPattern.test(customerId)) {
     res.status(400).json({ message: "ID khách hàng không hợp lệ" });
     return;
   }
 
   const result = await pool.query(
     "SELECT id, name, phone FROM customers WHERE id=$1",
-    [req.params.id],
+    [customerId],
   );
 
   if (result.rowCount === 0) {
@@ -88,6 +90,36 @@ app.get("/customers/:id", async (req, res) => {
   }
 
   res.status(200).json({ data: result.rows[0] });
+});
+
+app.get("/customers/:id/transactions", async (req, res) => {
+  const customerId = req.params.id;
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(req.params.id)) {
+    res.status(400).json({ message: "ID khách hàng không hợp lệ" });
+    return;
+  }
+
+  const result = await pool.query("SELECT id FROM customers WHERE id = $1", [
+    customerId,
+  ]);
+
+  if (result.rowCount === 0) {
+    res.status(404).json({ message: "Không tìm thấy khách hàng" });
+    return;
+  }
+
+  const transactions = await pool.query(
+    `SELECT id, customer_id, type, amount
+   FROM transactions
+   WHERE customer_id = $1`,
+    [customerId],
+  );
+
+  res.status(200).json({ data: transactions.rows });
 });
 
 app.post("/customers/:id/transactions", async (req, res) => {
